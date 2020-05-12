@@ -10,10 +10,11 @@ import { BuilderContext, BuilderOutput, createBuilder, targetFromTargetString } 
 import { BrowserBuilderOptions } from '@angular-devkit/build-angular';
 import { fork } from 'child_process';
 import * as fs from 'fs';
+import { Options } from 'html-minifier';
 import * as path from 'path';
 
 import { PrerenderBuilderOptions, PrerenderBuilderOutput } from './models';
-import { getIndexOutputFile, getRoutes, shardArray } from './utils';
+import { getHtmlMinifyOptions, getIndexOutputFile, getRoutes, shardArray } from './utils';
 
 type BuildBuilderOutput = BuilderOutput & {
   baseOutputPath: string;
@@ -70,6 +71,7 @@ async function _parallelRenderRoutes(
   outputPath: string,
   indexFile: string,
   serverBundlePath: string,
+  htmlMinifyOptions?: Options
   ): Promise<void> {
   const workerFile = path.join(__dirname, 'render.js');
   const childProcesses = shardedRoutes.map(routes =>
@@ -79,6 +81,7 @@ async function _parallelRenderRoutes(
         indexFile,
         serverBundlePath,
         outputPath,
+        JSON.stringify(htmlMinifyOptions),
         ...routes,
       ])
         .on('message', data => {
@@ -108,6 +111,7 @@ async function _renderUniversal(
   serverResult: BuildBuilderOutput,
   browserOptions: BrowserBuilderOptions,
   numProcesses?: number,
+  htmlMinifyOptions?: Options
 ): Promise<BuildBuilderOutput> {
   // Users can specify a different base html file e.g. "src/home.html"
   const indexFile = getIndexOutputFile(browserOptions);
@@ -133,6 +137,7 @@ async function _renderUniversal(
       outputPath,
       indexFile,
       serverBundlePath,
+      htmlMinifyOptions
     );
   }
 
@@ -149,6 +154,7 @@ export async function execute(
   context: BuilderContext
 ): Promise<PrerenderBuilderOutput> {
   const routes = await getRoutes(options, context);
+  const htmlMinifyOptions = getHtmlMinifyOptions(options, context);
   if (!routes.length) {
     throw new Error(`Could not find any routes to prerender.`);
   }
@@ -170,6 +176,7 @@ export async function execute(
     serverResult,
     browserOptions,
     options.numProcesses,
+    htmlMinifyOptions,
   );
 }
 

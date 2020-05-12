@@ -10,6 +10,7 @@ import { BuilderContext, targetFromTargetString } from '@angular-devkit/architec
 import { BrowserBuilderOptions } from '@angular-devkit/build-angular';
 import * as fs from 'fs';
 import { parseAngularRoutes } from 'guess-parser';
+import { Options } from 'html-minifier';
 import * as os from 'os';
 import * as path from 'path';
 
@@ -78,4 +79,26 @@ export function getIndexOutputFile(options: BrowserBuilderOptions): string {
   } else {
     return options.index.output || 'index.html';
   }
+}
+
+/**
+ * Returns the options for html-minifier
+ */
+export function getHtmlMinifyOptions(
+  options: PrerenderBuilderOptions,
+  context: BuilderContext,
+): Options | undefined {
+  if (options.htmlMinifyOptionsFile) {
+    const htmlMinifyOptionsFilePath = path.resolve(
+      context.workspaceRoot,
+      options.htmlMinifyOptionsFile
+    );
+    try {
+      return require(htmlMinifyOptionsFilePath) as Options;
+    } catch (e) {
+      context.logger.error('Unable to load html-minifier options from file', e);
+    }
+  }
+
+  return;
 }

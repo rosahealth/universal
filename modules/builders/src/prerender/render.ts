@@ -7,6 +7,7 @@
  */
 
 import * as fs from 'fs';
+import { Options, minify } from 'html-minifier';
 import * as path from 'path';
 
 const [
@@ -14,6 +15,7 @@ const [
   indexFile,
   serverBundlePath,
   browserOutputPath,
+  minifyOptionsJson,
   ...routes
 ] = process.argv.slice(2);
 
@@ -57,10 +59,21 @@ async function getServerBundle(bundlePath: string) {
       document: indexHtml + '<!-- This page was prerendered with Angular Universal -->',
       url: route,
     };
-    const html = await renderModuleFn(AppServerModuleDef, renderOpts);
+    let html = await renderModuleFn(AppServerModuleDef, renderOpts);
 
     const outputFolderPath = path.join(browserOutputPath, route);
     const outputIndexPath = path.join(outputFolderPath, 'index.html');
+
+    try {
+      const minifyOptions: Options = JSON.parse(minifyOptionsJson);
+      if (minifyOptions) {
+        html = minify(html, minifyOptions);
+      }
+    } catch (e) {
+      if (process.send) {
+        process.send({success: false, error: e.message, outputIndexPath});
+      }
+    }
 
     // This case happens when we are prerendering "/".
     if (browserIndexOutputPath === outputIndexPath) {
